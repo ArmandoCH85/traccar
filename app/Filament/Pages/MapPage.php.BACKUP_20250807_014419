@@ -165,22 +165,21 @@ class MapPage extends Page implements HasActions, HasForms, HasInfolists
 
     public function refreshMap(): void
     {
-        \Log::info('MapPage: Manual refresh triggered - DISABLED to prevent modal closing');
-
-        // DESHABILITADO: No hacer refresh para evitar que cierre el modal
-        // $this->loadMapData();
-
-        // DESHABILITADO: No dispatch para evitar que cierre el modal
-        // $this->dispatch('map-refresh', [
-        //     'devices' => $this->devices,
-        //     'positions' => $this->positions,
-        //     'timestamp' => time()
-        // ]);
-
-        // DESHABILITADO: No enriquecer para evitar que cierre el modal
-        // $this->enrichPositionsWithAddresses();
-
-        \Log::info('MapPage: Refresh DISABLED to prevent modal from closing');
+        \Log::info('MapPage: Manual refresh triggered');
+        
+        $this->loadMapData();
+        
+        // Force Livewire to re-render the component
+        $this->dispatch('map-refresh', [
+            'devices' => $this->devices,
+            'positions' => $this->positions,
+            'timestamp' => time()
+        ]);
+        
+        // Enriquecer con direcciones después del refresh
+        $this->enrichPositionsWithAddresses();
+        
+        \Log::info('MapPage: Refresh completed - ' . count($this->devices) . ' devices, ' . count($this->positions) . ' positions');
     }
     
     /**
@@ -255,7 +254,7 @@ class MapPage extends Page implements HasActions, HasForms, HasInfolists
     public function viewDeviceDetailsAction(): Action
     {
         return Action::make('viewDeviceDetails')
-            ->modalHeading('Informaciónnnn del Vehículo')
+            ->modalHeading('Información del Vehículo')
             ->modalDescription('Detalles del dispositivo y posición')
             ->modalWidth(MaxWidth::Medium)
             ->icon('heroicon-o-truck')
@@ -277,6 +276,6 @@ class MapPage extends Page implements HasActions, HasForms, HasInfolists
                     ->color('gray')
                     ->modalCancelAction(),
             ])
-            ->closeModalByClickingAway(false);
+            ->closeModalByClickingAway(true);
     }
 }

@@ -103,11 +103,18 @@ class TraccarService
                 ->get($this->baseUrl . '/positions', $params);
 
             if ($response->successful()) {
-                return $response->json();
+                $positions = $response->json();
+                
+                // DEBUG: Log raw response from Traccar
+                \Log::info('TraccarService: Raw positions response from API: ' . json_encode(array_slice($positions, 0, 2))); // Solo primeras 2 para no saturar logs
+                
+                return $positions;
             }
 
+            \Log::error('TraccarService: Failed to get positions. Status: ' . $response->status() . ', Body: ' . $response->body());
             return [];
         } catch (\Exception $e) {
+            \Log::error('TraccarService: Exception getting positions: ' . $e->getMessage());
             return [];
         }
     }
@@ -130,6 +137,65 @@ class TraccarService
     public function getUser(): ?array
     {
         return Session::get('traccar_user');
+    }
+    
+    /**
+     * Get last known positions for all devices
+     * This endpoint typically returns the most recent position for each device with complete data
+     */
+    public function getLastPositions(): array
+    {
+        try {
+            $this->loadCookies();
+            
+            $response = Http::withCookies($this->cookies, parse_url($this->baseUrl, PHP_URL_HOST))
+                ->get($this->baseUrl . '/positions', [
+                    'all' => 'true' // Get all devices' last positions
+                ]);
+
+            if ($response->successful()) {
+                $positions = $response->json();
+                
+                // DEBUG: Log to see what we get
+                \Log::info('TraccarService: Last positions response count: ' . count($positions));
+                if (count($positions) > 0) {
+                    \Log::info('TraccarService: Sample last position: ' . json_encode($positions[0]));
+                }
+                
+                return $positions;
+            }
+
+            \Log::error('TraccarService: Failed to get last positions. Status: ' . $response->status());
+            return [];
+        } catch (\Exception $e) {
+            \Log::error('TraccarService: Exception getting last positions: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Alternative method to get positions - try different Traccar endpoints
+     */
+    public function getLatestPositions(): array
+    {
+        try {
+            $this->loadCookies();
+            
+            // Try the reports/route endpoint which sometimes has more complete data
+            $response = Http::withCookies($this->cookies, parse_url($this->baseUrl, PHP_URL_HOST))
+                ->get($this->baseUrl . '/positions');
+
+            if ($response->successful()) {
+                $positions = $response->json();
+                \Log::info('TraccarService: Latest positions method returned: ' . count($positions) . ' positions');
+                return $positions;
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            \Log::error('TraccarService: Exception in getLatestPositions: ' . $e->getMessage());
+            return [];
+        }
     }
 
     public function isAuthenticated(): bool

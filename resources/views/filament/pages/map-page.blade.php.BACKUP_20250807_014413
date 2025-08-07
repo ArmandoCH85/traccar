@@ -13,7 +13,7 @@
         </button>
 
         <!-- Floating Device List Panel - ALWAYS VISIBLE -->
-        <div id="devicePanel" class="fixed left-4 top-16 w-80 max-h-[calc(100vh-8rem)] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden z-10 backdrop-blur-sm bg-white/95 dark:bg-gray-800/95">
+        <div id="devicePanel" class="fixed left-4 top-16 w-80 max-h-[calc(100vh-8rem)] bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden z-10">
             <!-- DEBUG INFO -->
             <div class="bg-blue-50 p-2 text-xs text-blue-800 border-b">
                 Devices: {{ count($devices ?? []) }} | Positions: {{ count($positions ?? []) }}
@@ -25,20 +25,8 @@
             @if (isset($devices) && is_array($devices) && count($devices) > 0)
                 <x-filament::section>
                     <x-slot name="heading">
-                        @php
-                            $totalDevices = count($devices);
-                            $onlineDevices = collect($devices)->where('status', 'online')->count();
-                            $offlineDevices = $totalDevices - $onlineDevices;
-                        @endphp
-                        <div class="flex flex-col">
-                            <span class="text-lg font-bold">{{ $totalDevices }} dispositivos</span>
-                            <span class="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                                <span class="text-green-600 dark:text-green-400">{{ $onlineDevices }} online</span>
-                                <span class="mx-1">•</span>
-                                <span class="text-red-600 dark:text-red-400">{{ $offlineDevices }} offline</span>
-                            </span>
-                        </div>
-                        <span id="selectedDeviceIndicator" class="hidden ml-2 text-xs px-2 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 dark:from-blue-900 dark:to-indigo-900 dark:text-blue-200 rounded-full shadow-sm">
+                        Active Devices ({{ count($devices) }})
+                        <span id="selectedDeviceIndicator" class="hidden ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
                             🎯 Tracking device
                         </span>
                     </x-slot>
@@ -54,50 +42,31 @@
                         </x-filament::button>
                     </x-slot>
 
-                    <div class="max-h-96 overflow-y-auto custom-scrollbar">
-                        <div class="space-y-2 p-2">
+                    <div class="max-h-96 overflow-y-auto">
+                        <div class="space-y-2">
                             @foreach ($devices as $device)
-                                <div class="device-card p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer group"
+                                <div class="device-card p-2 bg-gray-50 dark:bg-gray-700 rounded border border-gray-100 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-gray-600 transition-all cursor-pointer" 
                                      onclick="focusOnDevice({{ $device['id'] }})"
                                      data-device-id="{{ $device['id'] }}"
                                 >
                                     <div class="flex items-center justify-between">
                                         <div class="min-w-0 flex-1">
-                                            <div class="flex items-center">
-                                                <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mr-3 group-hover:from-blue-500 group-hover:to-blue-700 transition-all duration-200">
-                                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
-                                                    </svg>
-                                                </div>
-                                                <div>
-                                                    <p class="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate group-hover:text-blue-900 dark:group-hover:text-blue-100 transition-colors duration-200">
-                                                        {{ $device['name'] ?? 'Device ' . $device['id'] }}
-                                                    </p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate group-hover:text-gray-600 dark:group-hover:text-gray-300">
-                                                        {{ $device['uniqueId'] ?? 'ID-' . $device['id'] }}
-                                                    </p>
-                                                </div>
-                                            </div>
+                                            <p class="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">
+                                                {{ $device['name'] ?? 'Device ' . $device['id'] }}
+                                            </p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                {{ $device['uniqueId'] ?? 'ID-' . $device['id'] }}
+                                            </p>
                                         </div>
-                                        <div class="flex-shrink-0 ml-3">
+                                        <div class="flex-shrink-0 ml-2">
                                             @php
                                                 $isOnline = isset($device['status']) && $device['status'] === 'online';
                                             @endphp
-                                            <div class="flex flex-col items-end">
-                                                <div class="flex items-center mb-1">
-                                                    <div class="relative">
-                                                        <div class="w-4 h-4 rounded-full mr-2 {{ $isOnline ? 'bg-green-500' : 'bg-red-500' }} shadow-md"></div>
-                                                        @if($isOnline)
-                                                            <div class="absolute top-0 left-0 w-4 h-4 rounded-full bg-green-400 animate-ping opacity-75"></div>
-                                                        @endif
-                                                    </div>
-                                                    <span class="text-xs font-bold px-3 py-1 rounded-full shadow-sm {{ $isOnline ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 dark:from-green-900 dark:to-emerald-900 dark:text-green-200 border border-green-200 dark:border-green-700' : 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 dark:from-red-900 dark:to-rose-900 dark:text-red-200 border border-red-200 dark:border-red-700' }}">
-                                                        {{ $isOnline ? 'Online' : 'Offline' }}
-                                                    </span>
-                                                </div>
-                                                <p class="text-xs text-gray-400 dark:text-gray-500">
-                                                    {{ isset($device['lastUpdate']) ? \Carbon\Carbon::parse($device['lastUpdate'])->diffForHumans() : 'Sin datos' }}
-                                                </p>
+                                            <div class="flex items-center">
+                                                <div class="w-2 h-2 rounded-full mr-1 {{ $isOnline ? 'bg-green-500' : 'bg-red-500' }}"></div>
+                                                <span class="text-xs font-medium {{ $isOnline ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                                    {{ $isOnline ? 'Online' : 'Offline' }}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -107,34 +76,23 @@
                     </div>
 
                     <!-- Statistics Footer -->
-                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-lg m-2 p-3">
-                        <div class="grid grid-cols-3 gap-3 text-center text-xs">
-                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
-                                <div class="w-6 h-6 bg-blue-500 rounded-full mx-auto mb-2 flex items-center justify-center">
-                                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                </div>
-                                <p class="font-bold text-xl text-blue-700 dark:text-blue-300">{{ count($devices) }}</p>
-                                <p class="text-blue-600 dark:text-blue-400 font-medium">Total</p>
+                    <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                            <div class="bg-gray-100 dark:bg-gray-600 rounded p-2">
+                                <p class="font-bold text-gray-900 dark:text-gray-100">{{ count($devices) }}</p>
+                                <p class="text-gray-500 dark:text-gray-400">Total</p>
                             </div>
-                            <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 rounded-lg p-3 border border-green-200 dark:border-green-700">
-                                <div class="w-6 h-6 bg-green-500 rounded-full mx-auto mb-2 flex items-center justify-center">
-                                    <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                </div>
-                                <p class="font-bold text-xl text-green-700 dark:text-green-300">
+                            <div class="bg-green-100 dark:bg-green-800 rounded p-2">
+                                <p class="font-bold text-green-700 dark:text-green-300">
                                     {{ collect($devices)->where('status', 'online')->count() }}
                                 </p>
-                                <p class="text-green-600 dark:text-green-400 font-medium">Online</p>
+                                <p class="text-green-600 dark:text-green-400">Online</p>
                             </div>
-                            <div class="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900 dark:to-red-800 rounded-lg p-3 border border-red-200 dark:border-red-700">
-                                <div class="w-6 h-6 bg-red-500 rounded-full mx-auto mb-2 flex items-center justify-center">
-                                    <div class="w-2 h-2 bg-white rounded-full"></div>
-                                </div>
-                                <p class="font-bold text-xl text-red-700 dark:text-red-300">
+                            <div class="bg-red-100 dark:bg-red-800 rounded p-2">
+                                <p class="font-bold text-red-700 dark:text-red-300">
                                     {{ collect($devices)->where('status', '!=', 'online')->count() }}
                                 </p>
-                                <p class="text-red-600 dark:text-red-400 font-medium">Offline</p>
+                                <p class="text-red-600 dark:text-red-400">Offline</p>
                             </div>
                         </div>
                     </div>
@@ -171,33 +129,30 @@
 
         <!-- NUEVO: Modal pequeño flotante centrado sobre el mapa -->
         <div id="compactDeviceModal" class="fixed inset-0 z-50 hidden items-center justify-center pointer-events-none">
-            <div class="compact-modal bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 pointer-events-auto backdrop-blur-sm" 
-                 style="width: 360px; max-height: 480px;">
+            <div class="compact-modal bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-600 pointer-events-auto" 
+                 style="width: 340px; max-height: 420px;">
                 
                 <!-- Header del modal con botón cerrar -->
-                <div class="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 rounded-t-xl">
-                    <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center">
-                        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
-                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                        Informaciónnnn del Vehículo
+                <div class="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 rounded-t-lg">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Información del Vehículo
                     </h3>
-                    <button id="closeCompactModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-all duration-200 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="closeCompactModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
                 
                 <!-- Contenido del modal -->
-                <div id="compactModalContent" class="p-5 space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+                <div id="compactModalContent" class="p-4 space-y-3 max-h-80 overflow-y-auto">
                     <!-- El contenido se cargará dinámicamente via JavaScript -->
-                    <div class="text-center py-10 text-gray-500">
-                        <div class="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                        <p class="text-sm font-medium">Cargando información...</p>
-                        <p class="text-xs text-gray-400 mt-1">Obteniendo datos del vehículo</p>
+                    <div class="text-center py-8 text-gray-500">
+                        <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                        Cargando información...
                     </div>
                 </div>
             </div>
@@ -429,22 +384,22 @@
                 closeButton.addEventListener('click', closeCompactModal);
             }
             
-            // DESHABILITADO: No cerrar modal al hacer clic fuera
-            // const modal = document.getElementById('compactDeviceModal');
-            // if (modal) {
-            //     modal.addEventListener('click', function(e) {
-            //         if (e.target === modal) {
-            //             closeCompactModal();
-            //         }
-            //     });
-            // }
+            // Cerrar modal al hacer clic fuera (opcional)
+            const modal = document.getElementById('compactDeviceModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeCompactModal();
+                    }
+                });
+            }
             
-            // DESHABILITADO: No cerrar modal con tecla ESC
-            // document.addEventListener('keydown', function(e) {
-            //     if (e.key === 'Escape') {
-            //         closeCompactModal();
-            //     }
-            // });
+            // Cerrar modal con tecla ESC
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeCompactModal();
+                }
+            });
         });
         
         // NUEVO: Actualizar modal del dispositivo seleccionado durante refresh
@@ -555,16 +510,14 @@
                 }
             });
 
-            // Update device card styling to show PERSISTENT selection - MEJORADO
+            // Update device card styling to show PERSISTENT selection
             document.querySelectorAll('.device-card').forEach(card => {
-                card.classList.remove('border-blue-500', 'dark:border-blue-400', 'bg-gradient-to-r', 'from-blue-100', 'to-indigo-100', 'dark:from-blue-900', 'dark:to-indigo-900', 'shadow-xl', 'scale-105', 'ring-2', 'ring-blue-300', 'dark:ring-blue-600');
-                card.style.transform = '';
+                card.classList.remove('bg-blue-100', 'dark:bg-blue-800', 'border-blue-300', 'dark:border-blue-600');
             });
-
+            
             const selectedCard = document.querySelector(`[data-device-id="${deviceId}"]`);
             if (selectedCard) {
-                selectedCard.classList.add('border-blue-500', 'dark:border-blue-400', 'bg-gradient-to-r', 'from-blue-100', 'to-indigo-100', 'dark:from-blue-900', 'dark:to-indigo-900', 'shadow-xl', 'scale-105', 'ring-2', 'ring-blue-300', 'dark:ring-blue-600');
-                selectedCard.style.transform = 'scale(1.05)';
+                selectedCard.classList.add('bg-blue-100', 'dark:bg-blue-800', 'border-blue-300', 'dark:border-blue-600');
                 // NO remover la selección - mantener hasta que se cierre modal o seleccione otro
             }
 
@@ -860,10 +813,10 @@
                     // ONLY update markers, NEVER touch the map tiles or instance
                     updateMarkersOnly();
                     
-                    // DESHABILITADO: No actualizar modal durante auto-refresh para evitar que se cierre
-                    // if (isDeviceSelected && selectedDeviceId) {
-                    //     updateSelectedDeviceModal();
-                    // }
+                    // NUEVO: Si hay dispositivo seleccionado, actualizar su modal
+                    if (isDeviceSelected && selectedDeviceId) {
+                        updateSelectedDeviceModal();
+                    }
                     
                 } catch (error) {
                     console.error('Error during ULTRA-SAFE auto-refresh:', error);
@@ -883,16 +836,9 @@
 
         // ULTRA-CRITICAL: Function to force map to NEVER go white
         function forceMapToStayVisible() {
-            // CRITICAL: Do NOT interfere if modal is open
-            const modal = document.getElementById('compactDeviceModal');
-            if (modal && modal.classList.contains('show')) {
-                console.log('🔒 MODAL PROTECTION: Skipping map visibility force - modal is open');
-                return;
-            }
-
             const mapContainer = document.getElementById('mapContainer');
             const mapElement = document.getElementById('map');
-
+            
             if (mapContainer) {
                 mapContainer.style.visibility = 'visible !important';
                 mapContainer.style.opacity = '1 !important';
@@ -900,7 +846,7 @@
                 mapContainer.style.background = '#f8f9fa'; // Light gray
                 mapContainer.style.zIndex = '10 !important';
             }
-
+            
             if (mapElement) {
                 mapElement.style.visibility = 'visible !important';
                 mapElement.style.opacity = '1 !important';
@@ -908,7 +854,7 @@
                 mapElement.style.background = '#f8f9fa'; // Light gray
                 mapElement.style.minHeight = '500px !important';
             }
-
+            
             // CRITICAL: Ensure ALL Leaflet containers stay visible
             const leafletContainers = document.querySelectorAll('.leaflet-container, .leaflet-map-pane, .leaflet-tile-pane');
             leafletContainers.forEach(container => {
@@ -917,7 +863,7 @@
                 // Let Leaflet handle container backgrounds naturally
                 container.style.display = 'block !important';
             });
-
+            
             console.log('FORCED MAP VISIBILITY - Map should be visible with normal background');
         }
         
@@ -967,12 +913,12 @@
             }
         }
 
-        // DESHABILITADO: Auto-refresh para evitar que cierre el modal
+        // Start auto-refresh when page loads
         document.addEventListener('DOMContentLoaded', function() {
             // Ensure map is visible immediately
             setTimeout(function() {
                 forceMapToStayVisible();
-                // startAutoRefresh(); // DESHABILITADO
+                startAutoRefresh();
             }, 1000);
             
             // Keep checking map visibility periodically
@@ -984,28 +930,18 @@
             stopAutoRefresh();
         });
 
-        // CRITICAL: Handle Livewire updates WITHOUT breaking the map OR modal
+        // CRITICAL: Handle Livewire updates WITHOUT breaking the map
         document.addEventListener('livewire:updated', function() {
-            console.log('Livewire updated - PROTECTING MAP and MODAL from interference...');
-
+            console.log('Livewire updated - PROTECTING MAP from interference...');
+            
             // IMMEDIATELY force map visibility
             forceMapToStayVisible();
-
-            // CRITICAL: Preserve modal state - do NOT close it
-            const modal = document.getElementById('compactDeviceModal');
-            const isModalOpen = modal && modal.classList.contains('show');
-
-            if (isModalOpen) {
-                console.log('🔒 MODAL PROTECTION: Modal is open, preserving state...');
-                // Do NOT update markers or do anything that might close the modal
-                return;
-            }
-
-            // ONLY update markers if map is safe AND modal is not open
+            
+            // ONLY update markers if map is safe
             if (window.mapInstance && mapInitialized && window.markersLayer) {
                 setTimeout(function() {
                     updateMarkersOnly();
-
+                    
                     // Force visibility again after update
                     setTimeout(forceMapToStayVisible, 200);
                 }, 200);
@@ -1476,8 +1412,8 @@
         
         /* NUEVO: Estilos para modal compacto flotante */
         #compactDeviceModal {
-            backdrop-filter: blur(4px) !important;
-            background: rgba(0, 0, 0, 0.1) !important;
+            backdrop-filter: none !important;
+            background: transparent !important;
             display: none;
         }
         
@@ -1486,43 +1422,20 @@
         }
         
         .compact-modal {
-            transform: scale(0.9) translateY(20px);
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 
-                       0 10px 25px -5px rgba(0, 0, 0, 0.1),
-                       0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+            transform: scale(0.95);
+            transition: all 0.2s ease-out;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
         }
         
         .compact-modal.show {
-            transform: scale(1) translateY(0);
-            opacity: 1;
+            transform: scale(1);
         }
         
-        /* Custom scrollbar */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 3px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 3px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.5);
-        }
-        
-        /* Animaciones suaves mejoradas */
+        /* Animación suave */
         @keyframes modalFadeIn {
             from {
                 opacity: 0;
-                transform: scale(0.9) translateY(20px);
+                transform: scale(0.9) translateY(-10px);
             }
             to {
                 opacity: 1;
@@ -1530,29 +1443,8 @@
             }
         }
         
-        @keyframes deviceCardPulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.02);
-            }
-        }
-        
         .compact-modal.animate-in {
-            animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .device-card[data-selected="true"] {
-            animation: deviceCardPulse 2s ease-in-out;
-            border-color: #3b82f6 !important;
-            background: linear-gradient(135deg, #eff6ff, #dbeafe) !important;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
-        }
-        
-        .dark .device-card[data-selected="true"] {
-            background: linear-gradient(135deg, #1e3a8a, #1e40af) !important;
-            border-color: #60a5fa !important;
+            animation: modalFadeIn 0.2s ease-out;
         }
         
         /* Responsive para pantallas pequeñas */
@@ -1566,37 +1458,6 @@
         /* Asegurar que el modal esté sobre TODO */
         #compactDeviceModal {
             z-index: 9999 !important;
-        }
-
-        /* MEJORAS ADICIONALES SEGÚN mejoras.md */
-
-        /* Mejoras para scrollbar personalizada */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 3px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: linear-gradient(to bottom, #3b82f6, #1d4ed8);
-            border-radius: 3px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(to bottom, #2563eb, #1e40af);
-        }
-
-        /* Mejoras para controles de Leaflet */
-        .leaflet-control-zoom a {
-            transition: all 0.2s ease !important;
-        }
-
-        .leaflet-control-zoom a:hover {
-            background-color: #f3f4f6 !important;
-            transform: scale(1.05) !important;
         }
     </style>
     @endpush
