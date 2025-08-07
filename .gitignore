@@ -22,3 +22,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Archivos grandes de Traccar
+traccar-*.zip
+*.tar.gz
+traccar.run
+jdk-17.0.2/
+openjdk-*
