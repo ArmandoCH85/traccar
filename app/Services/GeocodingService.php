@@ -34,8 +34,9 @@ class GeocodingService
             
             Log::info("GeocodingService: Making API request for coordinates: {$latitude}, {$longitude}");
             
-            // Llamada a Nominatim de OpenStreetMap
-            $response = Http::timeout(5)
+            // Llamada a Nominatim de OpenStreetMap con timeout reducido
+            $response = Http::timeout(2) // Reducido de 5 a 2 segundos
+                ->retry(1, 100) // Reintentar 1 vez con 100ms de espera
                 ->withHeaders([
                     'User-Agent' => 'TraccarApp/1.0 (Laravel GPS Tracking)'
                 ])
@@ -43,7 +44,7 @@ class GeocodingService
                     'format' => 'json',
                     'lat' => $latitude,
                     'lon' => $longitude,
-                    'zoom' => 18,
+                    'zoom' => 16, // Reducido de 18 a 16 para respuestas más rápidas
                     'addressdetails' => 1,
                     'accept-language' => 'es,en'
                 ]);
@@ -134,17 +135,42 @@ class GeocodingService
     public function getMultipleAddresses(array $coordinates): array
     {
         $addresses = [];
+        $maxRequests = 20; // Límite máximo de peticiones por llamada
+        $requestCount = 0;
+        
+        Log::info("GeocodingService: Processing " . count($coordinates) . " coordinates (max: {$maxRequests})");
         
         foreach ($coordinates as $coord) {
+            if ($requestCount >= $maxRequests) {
+                Log::info("GeocodingService: Reached maximum requests limit ({$maxRequests}), stopping");
+                break;
+            }
+            
             if (isset($coord['latitude']) && isset($coord['longitude'])) {
                 $key = $coord['latitude'] . ',' . $coord['longitude'];
+                
+                // Verificar cache primero para no contar como request
+                $cacheKey = "geocoding_" . number_format($coord['latitude'], 4) . "_" . number_format($coord['longitude'], 4);
+                if (Cache::has($cacheKey)) {
+                    $addresses[$key] = Cache::get($cacheKey);
+                    continue;
+                }
+                
+                // Solo hacer request si no está en cache
                 $addresses[$key] = $this->getAddressFromCoordinates(
                     $coord['latitude'], 
                     $coord['longitude']
                 );
+                $requestCount++;
+                
+                // Pequeña pausa entre requests para ser respetuosos con la API
+                if ($requestCount < $maxRequests) {
+                    usleep(100000); // 100ms de pausa
+                }
             }
         }
         
+        Log::info("GeocodingService: Completed {$requestCount} requests, returned " . count($addresses) . " addresses");
         return $addresses;
     }
 

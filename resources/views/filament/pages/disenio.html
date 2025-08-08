@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estructura HTML del Mapa - Capas Visuales</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* ========================================
+           CAPA 1: MAP CONTAINER - FONDO AZUL CLARO
+           ======================================== */
+        #mapContainer {
+            position: fixed !important;
+            top: 0 !important;
+            left: var(--fi-sidebar-width, 16rem) !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: calc(100% - var(--fi-sidebar-width, 16rem)) !important;
+            height: 100% !important;
+            z-index: 1 !important;
+            background: linear-gradient(135deg, #e0f2fe, #b3e5fc) !important; /* CAPA 1: Azul claro */
+        }
+
+        #map {
+            width: 100% !important;
+            height: 100% !important;
+            background: #f0f8ff !important; /* CAPA 1: Azul muy claro para Leaflet */
+            min-height: 400px !important;
+        }
+
+        /* ========================================
+           CAPA 2: DEVICE PANEL - FONDO VERDE CLARO
+           ======================================== */
+        #devicePanel {
+            position: fixed !important;
+            left: calc(var(--fi-sidebar-width, 16rem) + 1rem) !important;
+            top: 4rem !important;
+            width: 20rem !important;
+            max-height: calc(100vh - 8rem) !important;
+            z-index: 10 !important;
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9) !important; /* CAPA 2: Verde claro */
+            border-radius: 0.5rem !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+            border: 2px solid #4caf50 !important; /* CAPA 2: Borde verde */
+        }
+
+        /* ========================================
+           CAPA 3: SIDEBAR TOGGLE - FONDO AMARILLO
+           ======================================== */
+        #sidebarToggle {
+            position: fixed !important;
+            top: 0.75rem !important;
+            left: calc(var(--fi-sidebar-width, 16rem) + 1rem) !important;
+            z-index: 20 !important;
+            background: linear-gradient(135deg, #fff9c4, #fef08a) !important; /* CAPA 3: Amarillo claro */
+            border: 2px solid #facc15 !important; /* CAPA 3: Borde amarillo */
+            border-radius: 0.5rem !important;
+            padding: 0.5rem !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+            cursor: pointer !important;
+        }
+
+        /* ========================================
+           CAPA 6: MODAL COMPACTO - FONDO ROSA/MAGENTA
+           ======================================== */
+        #compactDeviceModal {
+            z-index: 30 !important;
+            position: fixed !important;
+            bottom: 1rem !important;
+            left: calc(var(--fi-sidebar-width, 16rem) + 1rem + 20rem + 1rem) !important; /* NUEVO: Al lado derecho de CAPA 2 */
+            width: 40rem !important; /* AUMENTADO: Para acomodar dos cuadros horizontalmente */
+            max-height: 24rem !important;
+            background: rgba(251, 207, 232, 0.9) !important; /* CAPA 6: Rosa transparente de fondo */
+            border: 3px solid #ec4899 !important; /* CAPA 6: Borde rosa fuerte */
+            display: flex !important; /* NUEVO: Layout horizontal */
+            flex-direction: row !important; /* NUEVO: Dirección horizontal */
+            gap: 0.75rem !important; /* NUEVO: Espacio entre cuadros */
+            padding: 0.75rem !important; /* NUEVO: Padding interno */
+            border-radius: 0.75rem !important; /* NUEVO: Bordes redondeados */
+        }
+
+        .compact-modal {
+            background: linear-gradient(135deg, #fce7f3, #f9a8d4) !important; /* CAPA 6: Rosa gradient */
+            border: 2px solid #ec4899 !important; /* CAPA 6: Borde rosa modal */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            flex: 1; /* NUEVO: Flex para distribución horizontal */
+            min-width: 0; /* NUEVO: Permite que el contenido se reduzca */
+        }
+
+        /* Responsive para modal horizontal */
+        @media (max-width: 1400px) {
+            #compactDeviceModal {
+                width: 35rem !important; /* Reducir ancho en pantallas grandes */
+            }
+        }
+
+        @media (max-width: 1200px) {
+            #compactDeviceModal {
+                width: 32rem !important; /* Reducir ancho en pantallas medianas */
+            }
+        }
+
+        @media (max-width: 1024px) {
+            #compactDeviceModal {
+                width: 28rem !important; /* Reducir más en pantallas pequeñas */
+                left: calc(var(--fi-sidebar-width, 16rem) + 1rem + 18rem + 0.5rem) !important; /* Ajustar posición */
+            }
+        }
+
+        @media (max-width: 768px) {
+            #compactDeviceModal {
+                flex-direction: column !important; /* CAMBIAR A VERTICAL en móviles */
+                width: auto !important;
+                left: 1rem !important;
+                right: 1rem !important;
+                max-height: 50vh !important;
+                overflow-y: auto !important;
+            }
+            
+            .compact-modal {
+                flex: none !important; /* Quitar flex en móviles */
+            }
+        }
+
+        /* Cuando sidebar está oculto */
+        body.sidebar-hidden #compactDeviceModal {
+            left: calc(1rem + 20rem + 1rem) !important; /* NUEVO: Posición cuando sidebar oculto (22rem) */
+        }
+
+        /* ========================================
+           CAPA 7: SCROLLBAR CUSTOM - FONDO CIAN/TURQUESA
+           ======================================== */
+        .custom-scrollbar {
+            overflow-y: scroll !important;
+            scrollbar-width: thick !important;
+            scrollbar-color: #0891b2 #a7f3d0 !important;
+            background: rgba(167, 243, 208, 0.3) !important; /* CAPA 7: Fondo cian claro */
+        }
+
+        /* Estilos básicos para visualización */
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            --fi-sidebar-width: 16rem;
+        }
+
+        .device-card {
+            padding: 0.5rem;
+            margin: 0.25rem;
+            background: white;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .device-card:hover {
+            background: #f3f4f6;
+            transform: translateX(2px);
+        }
+
+        .status-online {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .status-offline {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .section-header {
+            background: #f8fafc;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+        }
+
+        .section-content {
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-item {
+            background: #f9fafb;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-weight: bold;
+            color: #111827;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========================================
+         CAPA 1: MAP CONTAINER - AZUL CLARO
+         ======================================== -->
+    <!-- Fullscreen Map Container -->
+    <div id="mapContainer" class="fixed inset-0 w-full h-full">
+        <div id="map" class="w-full h-full">
+            <!-- Aquí se renderiza el mapa de Leaflet -->
+            <div style="padding: 2rem; text-align: center; color: #1e40af; font-weight: bold;">
+                🗺️ CAPA 1: MAPA LEAFLET<br>
+                <small>Contenedor principal del mapa con fondo azul claro</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         CAPA 3: SIDEBAR TOGGLE - AMARILLO
+         ======================================== -->
+    <!-- Sidebar Toggle Button -->
+    <button id="sidebarToggle" title="Alternar Sidebar">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+        <div style="font-size: 0.6rem; margin-top: 2px;">🟡 CAPA 3</div>
+    </button>
+
+    <!-- ========================================
+         CAPA 2: DEVICE PANEL - VERDE CLARO
+         ======================================== -->
+    <!-- Floating Device List Panel - ALWAYS VISIBLE -->
+    <div id="devicePanel">
+        
+        <!-- Header del panel -->
+        <div class="section-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.1rem;">📱 5 dispositivos</span>
+                <span style="background: #4caf50; color: white; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem;">🟢 CAPA 2</span>
+            </div>
+            <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                <span style="color: #10b981;">3 online</span> • <span style="color: #ef4444;">2 offline</span>
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div style="padding: 0.75rem; display: flex; gap: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+            <button onclick="alert('Ver todos los dispositivos')" style="flex: 1; font-size: 0.75rem;">
+                🔍 Ver todos
+            </button>
+            <button onclick="alert('Actualizar datos')" style="background: #6b7280;">
+                🔄 Refresh
+            </button>
+        </div>
+
+        <!-- Lista de dispositivos con scroll personalizado -->
+        <div class="section-content custom-scrollbar" id="deviceListContainer">
+            <div style="margin-bottom: 0.5rem;">
+                <strong>🩵 CAPA 7: Scrollbar personalizado (cian/turquesa)</strong>
+            </div>
+            
+            <!-- Device 1 -->
+            <div class="device-card" onclick="alert('Dispositivo 1 seleccionado')">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600;">🚗 Vehículo Alpha</div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">ID: VH-001</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="status-online">🟢 Online</span>
+                        <div style="font-size: 0.75rem; color: #6b7280;">Hace 2 min</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device 2 -->
+            <div class="device-card" onclick="alert('Dispositivo 2 seleccionado')">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600;">🚛 Camión Beta</div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">ID: VH-002</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="status-offline">🔴 Offline</span>
+                        <div style="font-size: 0.75rem; color: #6b7280;">Hace 1 hora</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device 3 -->
+            <div class="device-card" onclick="alert('Dispositivo 3 seleccionado')">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600;">🏍️ Moto Gamma</div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">ID: VH-003</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="status-online">🟢 Online</span>
+                        <div style="font-size: 0.75rem; color: #6b7280;">Hace 30 seg</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device 4 -->
+            <div class="device-card" onclick="alert('Dispositivo 4 seleccionado')">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600;">🚐 Van Delta</div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">ID: VH-004</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="status-online">🟢 Online</span>
+                        <div style="font-size: 0.75rem; color: #6b7280;">Hace 5 min</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device 5 -->
+            <div class="device-card" onclick="alert('Dispositivo 5 seleccionado')">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600;">🚕 Taxi Epsilon</div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">ID: VH-005</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="status-offline">🔴 Offline</span>
+                        <div style="font-size: 0.75rem; color: #6b7280;">Hace 3 horas</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido adicional para demostrar scroll -->
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(167, 243, 208, 0.2); border-radius: 0.5rem;">
+                <strong>📊 Estadísticas</strong><br>
+                <small>Contenido adicional para probar el scroll personalizado</small>
+            </div>
+
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(167, 243, 208, 0.2); border-radius: 0.5rem;">
+                <strong>⚙️ Configuración</strong><br>
+                <small>Más contenido para scroll</small>
+            </div>
+
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(167, 243, 208, 0.2); border-radius: 0.5rem;">
+                <strong>📈 Reportes</strong><br>
+                <small>Aún más contenido para scroll</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         CAPA 6: MODAL COMPACTO - ROSA/MAGENTA (HORIZONTAL)
+         POSICIÓN: PARTE INFERIOR, AL LADO DERECHO DE CAPA 2
+         ======================================== -->
+    <!-- Modal compacto flotante sobre el mapa -->
+    <div id="compactDeviceModal">
+        <!-- Primer cuadro: Información del vehículo -->
+        <div id="vehicleInfoBox" class="compact-modal" style="flex: 1; min-width: 0;">
+            <!-- Header del primer cuadro -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #ec4899;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 0.25rem; font-size: 0.8rem;">
+                    <span style="background: #ec4899; color: white; padding: 0.125rem 0.25rem; border-radius: 9999px; font-size: 0.6rem;">🩷 CAPA 6</span>
+                    📋 Info Vehículo
+                </h3>
+                <button id="closeCompactModal" onclick="document.getElementById('compactDeviceModal').classList.add('hidden')" style="background: #ec4899; padding: 0.25rem; font-size: 0.75rem;">
+                    ✕
+                </button>
+            </div>
+            
+            <!-- Contenido del primer cuadro -->
+            <div id="vehicleInfoContent">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 0.5rem;">
+                    <div class="info-item">
+                        <div class="info-label">Vehículo</div>
+                        <div class="info-value">🚗 Vehículo Alpha</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Estado</div>
+                        <div class="info-value" style="color: #10b981;">🟢 Online</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Velocidad</div>
+                        <div class="info-value">45 km/h</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Combustible</div>
+                        <div class="info-value">75%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segundo cuadro: Información de ubicación -->
+        <div id="locationInfoBox" class="compact-modal" style="flex: 1; min-width: 0;">
+            <!-- Header del segundo cuadro -->
+            <div style="margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #ec4899;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 0.25rem; font-size: 0.8rem;">
+                    <span style="background: #ec4899; color: white; padding: 0.125rem 0.25rem; border-radius: 9999px; font-size: 0.6rem;">🩷 CAPA 6</span>
+                    📍 Info Ubicación
+                </h3>
+            </div>
+            
+            <!-- Contenido del segundo cuadro -->
+            <div id="locationInfoContent">
+                <div style="margin-bottom: 0.5rem;">
+                    <div class="info-label">📅 Última Comunicación</div>
+                    <div class="info-value" style="font-size: 0.75rem;">08/08/2025 14:30:15</div>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <div class="info-label">🌐 Coordenadas</div>
+                    <div class="info-value" style="font-family: monospace; font-size: 0.75rem;">-12.0464, -77.0428</div>
+                </div>
+                <div>
+                    <div class="info-label">🏠 Dirección</div>
+                    <div class="info-value" style="font-size: 0.75rem; line-height: 1.2;">Av. Javier Prado Este 4200, San Isidro, Lima</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         SCRIPTS DE FUNCIONALIDAD
+         ======================================== -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Función para mostrar/ocultar el modal
+        function toggleModal() {
+            const modal = document.getElementById('compactDeviceModal');
+            modal.classList.toggle('hidden');
+        }
+
+        // Mostrar modal al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // El modal está visible por defecto para demostración
+            console.log('🎨 Estructura HTML cargada con capas visuales diferenciadas');
+            
+            // Simular funcionalidad del toggle sidebar
+            document.getElementById('sidebarToggle').addEventListener('click', function() {
+                alert('🟡 CAPA 3: Toggle Sidebar clickeado!\n\nEn la implementación real, esto mostraría/ocultaría el sidebar de Filament.');
+            });
+
+            // Agregar información visual sobre las capas
+            setTimeout(() => {
+                console.log(`
+🎨 CAPAS VISUALIZADAS:
+🔵 CAPA 1 - Map Container (Azul): Contenedor principal del mapa
+🟢 CAPA 2 - Device Panel (Verde): Panel flotante de dispositivos (izquierda)
+🟡 CAPA 3 - Sidebar Toggle (Amarillo): Botón de toggle del sidebar
+🩷 CAPA 6 - Modal Compacto (Rosa): Modal horizontal en parte inferior, AL LADO DERECHO de CAPA 2
+🩵 CAPA 7 - Scrollbar (Cian): Scroll personalizado en panel de dispositivos
+
+Posición CAPA 6: bottom: 1rem, left: calc(sidebar + panel + gap) = ~38rem
+                `);
+            }, 1000);
+        });
+
+        // Simular funcionalidad de selección de dispositivos
+        document.querySelectorAll('.device-card').forEach(card => {
+            card.addEventListener('click', function() {
+                // Remover selección anterior
+                document.querySelectorAll('.device-card').forEach(c => c.style.background = 'white');
+                // Seleccionar actual
+                this.style.background = 'linear-gradient(135deg, #fecaca, #f87171)';
+                this.style.borderColor = '#ef4444';
+                
+                console.log('🟢 CAPA 2: Dispositivo seleccionado -', this.querySelector('div').textContent);
+            });
+        });
+    </script>
+
+    <!-- Indicador de capas flotante -->
+    <div style="position: fixed; top: 4rem; right: 1rem; background: rgba(0,0,0,0.8); color: white; padding: 1rem; border-radius: 0.5rem; font-size: 0.75rem; z-index: 9999; max-width: 220px;">
+        <strong>🎨 CAPAS VISUALES:</strong><br>
+        🔵 CAPA 1: Mapa (Azul)<br>
+        🟢 CAPA 2: Panel (Verde) - Izquierda<br>
+        🟡 CAPA 3: Toggle (Amarillo)<br>
+        🩷 CAPA 6: Modal <strong>HORIZONTAL</strong> (Rosa)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;↳ Al lado derecho de CAPA 2<br>
+        🩵 CAPA 7: Scroll (Cian)<br>
+        <br>
+        <small>Modal ahora posicionado al lado derecho del panel de dispositivos, en la parte inferior.</small>
+    </div>
+
+</body>
+</html>

@@ -17,6 +17,7 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Infolists\Concerns\InteractsWithInfolists;
 use Filament\Infolists\Contracts\HasInfolists;
+use Filament\Notifications\Notification;
 
 class MapPage extends Page implements HasActions, HasForms, HasInfolists
 {
@@ -145,8 +146,9 @@ class MapPage extends Page implements HasActions, HasForms, HasInfolists
                     }
                 }
                 
-                // NUEVO: Enriquecer posiciones con direcciones geocodificadas
-                $this->enrichPositionsWithAddresses();
+                // OPTIMIZACIÓN: Geocodificar de forma limitada para evitar timeout
+                \Log::info('MapPage: Enabling limited geocoding to prevent timeout');
+                $this->enrichPositionsWithAddressesLimited();
                 
             } else {
                 \Log::error('MapPage: Failed to authenticate with Traccar after retry');
@@ -165,26 +167,138 @@ class MapPage extends Page implements HasActions, HasForms, HasInfolists
 
     public function refreshMap(): void
     {
-        \Log::info('MapPage: Manual refresh triggered - DISABLED to prevent modal closing');
+        \Log::info('MapPage: Manual refresh triggered');
+        
+        $this->loadMapData();
+        
+        // Force Livewire to re-render the component
+        $this->dispatch('map-refresh', [
+            'devices' => $this->devices,
+            'positions' => $this->positions,
+            'timestamp' => time()
+        ]);
+        
+        // Enriquecer con direcciones después del refresh (limitado)
+        $this->enrichPositionsWithAddressesLimited();
+        
+        \Log::info('MapPage: Manual refresh completed');
+    }
 
-        // DESHABILITADO: No hacer refresh para evitar que cierre el modal
-        // $this->loadMapData();
+    /**
+     * Método para polling automático cada 10 segundos
+     * Este método se ejecuta automáticamente por wire:poll
+     */
+    public function autoRefresh(): void
+    {
+        \Log::info('MapPage: Auto-refresh triggered by wire:poll');
+        
+        try {
+            // Cargar nuevos datos
+            $this->loadMapData();
+            
+            // REMOVED: map-auto-refresh dispatch - was causing interference
+            // El mapa se actualiza automáticamente con livewire:updated
+            
+            \Log::info('MapPage: Auto-refresh completed successfully');
+            
+        } catch (\Exception $e) {
+            \Log::error('MapPage: Error during auto-refresh: ' . $e->getMessage());
+        }
+    }
 
-        // DESHABILITADO: No dispatch para evitar que cierre el modal
-        // $this->dispatch('map-refresh', [
-        //     'devices' => $this->devices,
-        //     'positions' => $this->positions,
-        //     'timestamp' => time()
-        // ]);
-
-        // DESHABILITADO: No enriquecer para evitar que cierre el modal
-        // $this->enrichPositionsWithAddresses();
-
-        \Log::info('MapPage: Refresh DISABLED to prevent modal from closing');
+    /**
+     * Método para activar geocoding manualmente (sin bloquear la carga inicial)
+     */
+    public function enableGeocoding(): void
+    {
+        try {
+            \Log::info('MapPage: Manual geocoding requested');
+            
+            // Disparar evento de inicio
+            $this->js('window.dispatchEvent(new CustomEvent("geocoding-started"))');
+            
+            $this->enrichPositionsWithAddresses();
+            
+            // Disparar evento de completado
+            $this->js('window.dispatchEvent(new CustomEvent("geocoding-completed"))');
+            
+            // Notificar al frontend que se actualizaron las direcciones
+            $this->dispatch('map-refresh', [
+                'devices' => $this->devices,
+                'positions' => $this->positions,
+                'timestamp' => time()
+            ]);
+            
+            \Log::info('MapPage: Manual geocoding completed successfully');
+            
+        } catch (\Exception $e) {
+            \Log::error('MapPage: Error during manual geocoding: ' . $e->getMessage());
+            
+            // Disparar evento de error
+            $this->js('window.dispatchEvent(new CustomEvent("geocoding-error"))');
+        }
     }
     
     /**
-     * Enriquece las posiciones con direcciones geocodificadas
+     * Enriquece las posiciones con direcciones geocodificadas (versión limitada para evitar timeout)
+     */
+    private function enrichPositionsWithAddressesLimited(): void
+    {
+        try {
+            $geocodingService = app(GeocodingService::class);
+            
+            // Obtener coordenadas únicas para geocodificar
+            $uniqueCoordinates = [];
+            foreach ($this->positions as $position) {
+                if (isset($position['latitude']) && isset($position['longitude'])) {
+                    $key = number_format($position['latitude'], 4) . ',' . number_format($position['longitude'], 4);
+                    if (!isset($uniqueCoordinates[$key])) {
+                        $uniqueCoordinates[$key] = [
+                            'latitude' => $position['latitude'],
+                            'longitude' => $position['longitude']
+                        ];
+                    }
+                }
+            }
+            
+            \Log::info('MapPage: Limited geocoding for ' . count($uniqueCoordinates) . ' unique coordinates');
+            
+            // SOLO procesar el primer lote de 20 coordenadas para evitar timeout
+            $firstBatch = array_slice(array_values($uniqueCoordinates), 0, 20);
+            
+            if (!empty($firstBatch)) {
+                \Log::info("MapPage: Processing first batch of " . count($firstBatch) . " coordinates");
+                
+                // Obtener direcciones para el primer lote
+                $addresses = $geocodingService->getMultipleAddresses($firstBatch);
+                
+                // Enriquecer posiciones con direcciones
+                $enrichedCount = 0;
+                foreach ($this->positions as &$position) {
+                    if (isset($position['latitude']) && isset($position['longitude'])) {
+                        $key = $position['latitude'] . ',' . $position['longitude'];
+                        if (isset($addresses[$key])) {
+                            $position['address'] = $addresses[$key];
+                            $enrichedCount++;
+                        }
+                    }
+                }
+                
+                \Log::info("MapPage: Limited geocoding completed, {$enrichedCount} positions enriched with addresses");
+                
+                // Si hay más coordenadas, programar geocodificación completa para después
+                if (count($uniqueCoordinates) > 20) {
+                    \Log::info("MapPage: " . (count($uniqueCoordinates) - 20) . " coordinates remaining for background processing");
+                }
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('MapPage: Error during limited geocoding: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enriquece las posiciones con direcciones geocodificadas (versión completa)
      */
     private function enrichPositionsWithAddresses(): void
     {
@@ -207,20 +321,44 @@ class MapPage extends Page implements HasActions, HasForms, HasInfolists
             
             \Log::info('MapPage: Geocoding ' . count($uniqueCoordinates) . ' unique coordinates');
             
-            // Obtener direcciones para coordenadas únicas
-            $addresses = $geocodingService->getMultipleAddresses(array_values($uniqueCoordinates));
+            // Procesar coordenadas en lotes de 20 con pausas reducidas
+            $allAddresses = [];
+            $coordinateChunks = array_chunk(array_values($uniqueCoordinates), 20);
+            $totalChunks = count($coordinateChunks);
+            
+            \Log::info("MapPage: Processing {$totalChunks} chunks of coordinates");
+            
+            foreach ($coordinateChunks as $chunkIndex => $chunk) {
+                \Log::info("MapPage: Processing chunk " . ($chunkIndex + 1) . " of {$totalChunks} (" . count($chunk) . " coordinates)");
+                
+                // Obtener direcciones para este lote
+                $chunkAddresses = $geocodingService->getMultipleAddresses($chunk);
+                
+                // Combinar con el resultado total
+                $allAddresses = array_merge($allAddresses, $chunkAddresses);
+                
+                // Pausa reducida entre lotes (solo 500ms)
+                if ($chunkIndex < $totalChunks - 1) {
+                    \Log::info("MapPage: Pausing 500ms before next chunk...");
+                    usleep(500000); // 500ms en microsegundos
+                }
+            }
+            
+            \Log::info('MapPage: Completed all chunks, total addresses obtained: ' . count($allAddresses));
             
             // Enriquecer posiciones con direcciones
+            $enrichedCount = 0;
             foreach ($this->positions as &$position) {
                 if (isset($position['latitude']) && isset($position['longitude'])) {
                     $key = $position['latitude'] . ',' . $position['longitude'];
-                    if (isset($addresses[$key])) {
-                        $position['address'] = $addresses[$key];
+                    if (isset($allAddresses[$key])) {
+                        $position['address'] = $allAddresses[$key];
+                        $enrichedCount++;
                     }
                 }
             }
             
-            \Log::info('MapPage: Geocoding completed, addresses added to positions');
+            \Log::info("MapPage: Geocoding completed, {$enrichedCount} positions enriched with addresses");
             
         } catch (\Exception $e) {
             \Log::error('MapPage: Error during geocoding: ' . $e->getMessage());
@@ -249,7 +387,47 @@ class MapPage extends Page implements HasActions, HasForms, HasInfolists
     {
         return [
             $this->viewDeviceDetailsAction(),
+            $this->geocodeAllAddressesAction(),
         ];
+    }
+
+    public function geocodeAllAddressesAction(): Action
+    {
+        return Action::make('geocodeAllAddresses')
+            ->label('Geocodificar Todas las Direcciones')
+            ->icon('heroicon-o-map-pin')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->modalHeading('Geocodificar Todas las Direcciones')
+            ->modalDescription('Este proceso puede tomar varios minutos para procesar todas las coordenadas. ¿Deseas continuar?')
+            ->modalSubmitActionLabel('Sí, Geocodificar Todo')
+            ->action(function () {
+                try {
+                    $this->enrichPositionsWithAddresses();
+                    
+                    // Refrescar el mapa con las nuevas direcciones
+                    $this->dispatch('map-refresh', [
+                        'devices' => $this->devices,
+                        'positions' => $this->positions,
+                        'timestamp' => time()
+                    ]);
+                    
+                    Notification::make()
+                        ->title('Geocodificación Completada')
+                        ->body('Todas las direcciones han sido procesadas exitosamente.')
+                        ->success()
+                        ->send();
+                        
+                } catch (\Exception $e) {
+                    \Log::error('Error during manual geocoding: ' . $e->getMessage());
+                    
+                    Notification::make()
+                        ->title('Error en Geocodificación')
+                        ->body('Ocurrió un error durante el proceso: ' . $e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
     }
 
     public function viewDeviceDetailsAction(): Action
