@@ -354,10 +354,27 @@
                     if (device && position.latitude && position.longitude && 
                         !isNaN(position.latitude) && !isNaN(position.longitude)) {
                         
+                        // Crear marcador principal
                         const marker = L.marker([position.latitude, position.longitude])
                             .bindPopup(`<b>${device.name}</b><br>ID: ${device.uniqueId}<br>Last Update: ${new Date(position.fixTime || position.deviceTime).toLocaleString()}`);
                         
+                        // Crear etiqueta con el nombre del vehículo
+                        const labelIcon = L.divIcon({
+                            className: 'vehicle-label',
+                            html: `<div class="vehicle-label-content">${device.name}</div>`,
+                            iconSize: [0, 0],
+                            iconAnchor: [0, 0]
+                        });
+                        
+                        // Crear marcador para la etiqueta (ligeramente desplazado hacia arriba)
+                        const labelMarker = L.marker([position.latitude + 0.0008, position.longitude], {
+                            icon: labelIcon,
+                            interactive: false
+                        });
+                        
+                        // Agregar ambos marcadores a la capa
                         window.markersLayer.addLayer(marker);
+                        window.markersLayer.addLayer(labelMarker);
                         bounds.push([position.latitude, position.longitude]);
                         markersAdded++;
                     }
@@ -1584,6 +1601,61 @@
         
         .scroll-indicator.bottom {
             bottom: 8px;
+        }
+        
+        /* ========================================
+           CAPA 8: ETIQUETAS DE VEHÍCULOS - MODERNO Y LEGIBLE
+           ======================================== */
+        .vehicle-label {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            pointer-events: none !important;
+        }
+        
+        .vehicle-label-content {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95)) !important;
+            color: #1f2937 !important;
+            padding: 0.375rem 0.75rem !important;
+            border-radius: 0.75rem !important;
+            font-size: 0.75rem !important;
+            font-weight: 600 !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+            border: 1px solid rgba(229, 231, 235, 0.6) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+            backdrop-filter: blur(10px) !important;
+            transform: translateX(-50%) !important;
+            min-width: max-content !important;
+            max-width: 120px !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        /* Tema oscuro para las etiquetas */
+        @media (prefers-color-scheme: dark) {
+            .vehicle-label-content {
+                background: linear-gradient(135deg, rgba(31, 41, 55, 0.95), rgba(17, 24, 39, 0.95)) !important;
+                color: #f9fafb !important;
+                border: 1px solid rgba(75, 85, 99, 0.6) !important;
+            }
+        }
+        
+        /* Hover effect para mejor visibilidad */
+        .vehicle-label-content:hover {
+            transform: translateX(-50%) scale(1.05) !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        /* Responsive para etiquetas */
+        @media (max-width: 768px) {
+            .vehicle-label-content {
+                font-size: 0.6875rem !important;
+                padding: 0.25rem 0.5rem !important;
+                max-width: 100px !important;
+            }
         }
     </style>
     @endpush
